@@ -1,0 +1,25 @@
+# Environment files
+.env
+*.local.*
+
+# Go build artifacts
+/spiro
+spiro.exe
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build directories
+dist/

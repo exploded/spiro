@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="description" content="About Spiro - the math behind the patterns.">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>About - Spiro</title>
+	<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="about-page">
+	<div class="app">
+		<header>
+			<div class="header-row">
+				<h1 class="header-title">Spiro</h1>
+				<div class="spacer"></div>
+				<nav class="nav">
+					<a class="nav-link" href="/">Home</a>
+					<a class="nav-link current" href="/about">About</a>
+				</nav>
+			</div>
+		</header>
+		<main>
+			<div class="page-content">
+				<div class="card">
+					<div class="card-content">
+						<h2>What it is</h2>
+						<p>Spiro draws Spirograph-style rosettes by chaining 2 to 5 rotating arms. Each arm pivots at the tip of the previous one, and the pen sits at the tip of the last arm. The pen's path is the pattern.</p>
+
+						<h2>The math</h2>
+						<p>Each arm's lab-frame rate is the product of its own <em>N</em> and all parent <em>N</em>s. So <em>N&#x2081;</em> is "rotations of arm 1 per pattern" and every later <em>N&#x1D62;</em> is "rotations of arm i per rotation of arm i&minus;1". Position is summed across arms:</p>
+						<pre>rate&#x1D62; = N&#x2081; &middot; N&#x2082; &middot; ... &middot; N&#x1D62;
+angle&#x1D62; = 2&pi; &middot; rate&#x1D62; &middot; t
+pos    += ( a&#x1D62;&middot;cos(angle&#x1D62;), b&#x1D62;&middot;sin(angle&#x1D62;) )</pre>
+						<p>where <em>L&#x1D62;</em> is arm length, <em>e&#x1D62;</em> is eccentricity (with <em>a&#x1D62;=L&#x1D62;</em>, <em>b&#x1D62;=L&#x1D62;(1-e&#x1D62;)</em>), and <em>t</em> goes from 0 to 1 over the duration.</p>
+
+						<h2>Why integer rates</h2>
+						<p>Every lab-frame rate is a product of integers, so every arm returns to its start at <em>t = 1</em> and the pen returns home with no visible seam. The pen retraces the pattern <em>|N&#x2081;|</em> times within the duration &mdash; click <strong>Simplify</strong> to drop <em>N&#x2081;</em> to &plusmn;1 and trace once.</p>
+
+						<h2>Color</h2>
+						<p>In rainbow mode the hue cycles <em>K = max&nbsp;|N&#x1D62;|</em> times per pattern, so the rainbow stripes line up with the petals.</p>
+
+						<h2>Sound</h2>
+						<p>Each arm contributes one sine/triangle oscillator at frequency&nbsp;110&nbsp;Hz &middot; |N&#x1D62;|, so the rotation ratios become a chord. Coprime <em>N&#x1D62;</em> sound dissonant, rationally related ones sound consonant.</p>
+					</div>
+				</div>
+			</div>
+		</main>
+	</div>
+</body>
+</html>
