@@ -4,7 +4,7 @@ A browser-based Spirograph drawing app. Multi-arm rotating epicycles produce
 intricate rosettes that close cleanly because every rotation rate is an
 integer.
 
-![rosette example](https://placehold.co/640x320?text=spirograph+screenshot)
+![spirograph rosette](static/screenshot.png)
 
 ## Features
 
