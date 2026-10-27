@@ -31,8 +31,21 @@ build.bat
 Then open <http://localhost:8484>. `run.bat` skips the build step on
 subsequent runs.
 
-The only environment variable is `PORT` (defaults to 8484). It's read from
-a `.env` file if present.
+The main environment variable is `PORT` (defaults to 8484). It's read from
+a `.env` file if present. `MONITOR_URL` and `MONITOR_API_KEY` optionally ship
+warnings and errors to the monitor portal.
+
+## Deployment
+
+Live at <https://spiro.mchugh.au>. Pushing to `main` runs
+`.github/workflows/deploy.yml`: tests, then a Linux build that's copied to the
+Linode with `templates/` and `static/` and installed by
+`scripts/deploy-spiro`. The app listens on `127.0.0.1:8993` behind Caddy.
+
+One-time server setup is `scripts/server-setup.sh`, which creates
+`/var/www/spiro`, the `.env`, the systemd unit and the sudoers entry, and
+prints the Caddy site block. The Caddy block must set
+`header_up X-Real-IP {client_ip}` or rate limiting treats every visitor as one.
 
 ## Architecture
 
