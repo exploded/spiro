@@ -5,12 +5,13 @@
 	<meta name="description" content="Browser Spirograph drawing app - multi-arm rotating epicycles that close cleanly with integer ratios.">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Spiro - Spirograph Patterns</title>
-	<link rel="stylesheet" href="/static/styles.css">
+	<link rel="stylesheet" href="{{asset "styles.css"}}">
 </head>
 <body>
 	<div class="app">
 		<header>
 			<div class="header-row">
+				<button class="panel-toggle" id="panelToggle" type="button" aria-label="Show controls" aria-controls="panel" aria-expanded="false">&#9776;</button>
 				<h1 class="header-title">Spiro</h1>
 				<div class="spacer"></div>
 				<nav class="nav">
@@ -22,8 +23,6 @@
 
 		<main class="layout">
 			<aside class="panel" id="panel">
-				<button class="panel-toggle" id="panelToggle" aria-label="Toggle controls">&#9776;</button>
-
 				<div class="panel-section">
 					<div class="row">
 						<button class="btn primary" id="startBtn">Start</button>
@@ -133,7 +132,8 @@
 				</div>
 
 				<div class="panel-section help">
-					<p>Scroll to zoom &middot; drag to pan &middot; double-click to reset view.</p>
+					<p class="help-mouse">Scroll to zoom &middot; drag to pan &middot; double-click to reset view.</p>
+					<p class="help-touch">Pinch to zoom &middot; drag to pan &middot; double-tap to reset view.</p>
 					<p>Patterns close cleanly because all rotation rates are integers.</p>
 				</div>
 			</aside>
@@ -145,6 +145,6 @@
 		</main>
 	</div>
 
-	<script src="/static/spiro.js"></script>
+	<script src="{{asset "spiro.js"}}"></script>
 </body>
 </html>

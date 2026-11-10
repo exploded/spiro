@@ -10,6 +10,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"html/template"
 	"log/slog"
 	"net"
@@ -17,6 +19,7 @@ import (
 	"net/netip"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -29,10 +32,35 @@ var templates *template.Template
 
 func init() {
 	var err error
-	templates, err = template.ParseGlob("templates/*.html")
+	templates, err = template.New("").Funcs(template.FuncMap{"asset": assetURL}).ParseGlob("templates/*.html")
 	if err != nil {
 		panic("failed to parse templates: " + err.Error())
 	}
+}
+
+var (
+	assetVersionsMu sync.Mutex
+	assetVersions   = map[string]string{}
+)
+
+// assetURL returns the /static/ URL for name with a content hash appended.
+// Static files are served "immutable" for a week, so without the hash a
+// browser keeps running the old CSS and JS long after a deploy.
+func assetURL(name string) string {
+	assetVersionsMu.Lock()
+	defer assetVersionsMu.Unlock()
+	v, ok := assetVersions[name]
+	if !ok {
+		data, err := os.ReadFile(filepath.Join("static", name))
+		if err != nil {
+			slog.Warn("asset not found, serving unversioned URL", "name", name, "error", err)
+			return "/static/" + name
+		}
+		sum := sha256.Sum256(data)
+		v = hex.EncodeToString(sum[:4])
+		assetVersions[name] = v
+	}
+	return "/static/" + name + "?v=" + v
 }
 
 type rateLimiter struct {

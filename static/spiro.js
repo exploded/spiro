@@ -666,6 +666,113 @@
 		el.textContent = `Lab rates: orbit ${labRate1}, gear ${labRate2}`;
 	}
 
+	function setPanelOpen(open) {
+		document.getElementById('panel').classList.toggle('open', open);
+		const btn = document.getElementById('panelToggle');
+		btn.setAttribute('aria-expanded', String(open));
+		btn.setAttribute('aria-label', open ? 'Hide controls' : 'Show controls');
+	}
+
+	function resetView() {
+		state.view = { scale: 1, offsetX: 0, offsetY: 0 };
+		renderTrail();
+		renderOverlay(state.t);
+	}
+
+	// Redraws during a drag or pinch are batched to one per frame: renderTrail
+	// replays every point, and touch devices fire pointermove far more often.
+	let viewRedrawPending = false;
+	function scheduleViewRedraw() {
+		if (viewRedrawPending) return;
+		viewRedrawPending = true;
+		requestAnimationFrame(() => {
+			viewRedrawPending = false;
+			renderTrail();
+			renderOverlay(state.t);
+		});
+	}
+
+	// One pointer drags to pan; two pointers pinch to zoom around their
+	// midpoint. Pointer events cover mouse, touch and pen alike.
+	function wirePointerPanZoom() {
+		const pointers = new Map();
+		let gesture = null;
+		let lastTap = { time: 0, x: 0, y: 0 };
+		let tapStart = null;
+
+		function local(p) {
+			const r = stage.getBoundingClientRect();
+			return { x: p.x - r.left, y: p.y - r.top };
+		}
+
+		function beginGesture() {
+			const pts = [...pointers.values()];
+			if (pts.length === 1) {
+				gesture = { kind: 'pan', x: pts[0].x, y: pts[0].y, ox: state.view.offsetX, oy: state.view.offsetY };
+			} else if (pts.length === 2) {
+				const a = local(pts[0]), b = local(pts[1]);
+				const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+				gesture = {
+					kind: 'pinch',
+					dist: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+					scale: state.view.scale,
+					anchor: untransform(mid.x, mid.y),
+				};
+			} else {
+				gesture = null;
+			}
+		}
+
+		stage.addEventListener('pointerdown', (e) => {
+			if (e.pointerType === 'mouse' && e.button !== 0) return;
+			try { stage.setPointerCapture(e.pointerId); } catch (_) { }
+			pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+			tapStart = pointers.size === 1 ? { x: e.clientX, y: e.clientY, time: e.timeStamp } : null;
+			beginGesture();
+		});
+
+		stage.addEventListener('pointermove', (e) => {
+			if (!pointers.has(e.pointerId) || !gesture) return;
+			pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+			const pts = [...pointers.values()];
+			if (gesture.kind === 'pan') {
+				state.view.offsetX = gesture.ox + (pts[0].x - gesture.x);
+				state.view.offsetY = gesture.oy + (pts[0].y - gesture.y);
+			} else if (gesture.kind === 'pinch') {
+				const a = local(pts[0]), b = local(pts[1]);
+				const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+				const dist = Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
+				state.view.scale = Math.max(0.05, Math.min(50, gesture.scale * dist / gesture.dist));
+				// Keep the drawing point that started under the fingers under them.
+				const c = center();
+				state.view.offsetX = mid.x - c.x - gesture.anchor.x * state.view.scale;
+				state.view.offsetY = mid.y - c.y - gesture.anchor.y * state.view.scale;
+			}
+			scheduleViewRedraw();
+		});
+
+		function endPointer(e) {
+			if (!pointers.delete(e.pointerId)) return;
+			// Double-tap to reset: dblclick doesn't fire for touch in iOS Safari.
+			if (e.type === 'pointerup' && e.pointerType !== 'mouse' && tapStart && pointers.size === 0) {
+				const moved = Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y);
+				if (moved < 10 && e.timeStamp - tapStart.time < 300) {
+					const near = Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30;
+					if (near && e.timeStamp - lastTap.time < 350) {
+						resetView();
+						lastTap = { time: 0, x: 0, y: 0 };
+					} else {
+						lastTap = { time: e.timeStamp, x: e.clientX, y: e.clientY };
+					}
+				}
+			}
+			tapStart = null;
+			beginGesture();
+		}
+		stage.addEventListener('pointerup', endPointer);
+		stage.addEventListener('pointercancel', endPointer);
+	}
+
 	function init() {
 		setArmCount(2);
 		stage.style.background = state.bgColor;
@@ -744,14 +851,14 @@
 			applyMuteVolume();
 		});
 
-		document.getElementById('startBtn').addEventListener('click', start);
+		document.getElementById('startBtn').addEventListener('click', () => {
+			// On a phone the panel covers most of the canvas; get it out of the way.
+			if (window.matchMedia('(max-width: 768px)').matches) setPanelOpen(false);
+			start();
+		});
 		document.getElementById('pauseBtn').addEventListener('click', togglePause);
 		document.getElementById('clearBtn').addEventListener('click', clearAll);
-		document.getElementById('resetViewBtn').addEventListener('click', () => {
-			state.view = { scale: 1, offsetX: 0, offsetY: 0 };
-			renderTrail();
-			renderOverlay(state.t);
-		});
+		document.getElementById('resetViewBtn').addEventListener('click', resetView);
 		document.getElementById('savePngBtn').addEventListener('click', () => {
 			const link = document.createElement('a');
 			link.download = `spiro-${Date.now()}.png`;
@@ -759,13 +866,11 @@
 			link.click();
 		});
 		document.getElementById('panelToggle').addEventListener('click', () => {
-			document.getElementById('panel').classList.toggle('open');
+			setPanelOpen(!document.getElementById('panel').classList.contains('open'));
 		});
 		document.getElementById('simplifyBtn').addEventListener('click', simplifyByGcd);
 
 		// Pan/zoom
-		let dragging = false;
-		let dragStart = { x: 0, y: 0, ox: 0, oy: 0 };
 		stage.addEventListener('wheel', (e) => {
 			e.preventDefault();
 			const rect = stage.getBoundingClientRect();
@@ -781,25 +886,9 @@
 			renderOverlay(state.t);
 		}, { passive: false });
 
-		stage.addEventListener('mousedown', (e) => {
-			if (e.button !== 0) return;
-			dragging = true;
-			dragStart = { x: e.clientX, y: e.clientY, ox: state.view.offsetX, oy: state.view.offsetY };
-		});
-		window.addEventListener('mousemove', (e) => {
-			if (!dragging) return;
-			state.view.offsetX = dragStart.ox + (e.clientX - dragStart.x);
-			state.view.offsetY = dragStart.oy + (e.clientY - dragStart.y);
-			renderTrail();
-			renderOverlay(state.t);
-		});
-		window.addEventListener('mouseup', () => { dragging = false; });
+		wirePointerPanZoom();
 
-		stage.addEventListener('dblclick', () => {
-			state.view = { scale: 1, offsetX: 0, offsetY: 0 };
-			renderTrail();
-			renderOverlay(state.t);
-		});
+		stage.addEventListener('dblclick', resetView);
 
 		window.addEventListener('resize', resizeCanvases);
 
